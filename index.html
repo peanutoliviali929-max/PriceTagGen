@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Tag Generator - Direct Edit</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800;900&family=Inter:wght@400&family=Libre+Barcode+EAN13+Text&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Price Tag Styles --- */
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800;900&family=Inter:wght@400&family=Libre+Barcode+EAN13+Text&display=swap');
+
+        .barcode-font {
+            font-family: 'Libre Barcode EAN13 Text', cursive;
+        }
+
+        .price-tag-container {
+            font-family: 'Inter', sans-serif;
+            width: 3in;
+            height: 1.25in;
+            background: #FFFFFF;
+            position: relative;
+            overflow: hidden;
+            color: #000000;
+            box-sizing: border-box;
+            flex-shrink: 0; 
+            position: relative; 
+        }
+
+        /* --- MODIFIED SECTION --- */
+        .price-tag-left {
+            position: absolute;
+            left: 0px;
+            top: 0px;
+            width: 60%; 
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: flex-start;
+        }
+        
+        .brand-box {
+            box-sizing: border-box;
+            border: 1px solid #000000;
+            padding: 5px;
+            display: inline-block; /* Key change for dynamic width */
+            min-width: 20px;
+            max-width: 100%; /* Ensures it wraps when hitting the container edge */
+            height: auto;
+            min-height: 24px;
+            font-size: 14px;
+            line-height: 16px;
+            font-weight: 400;
+            word-break: break-word;
+            white-space: pre-line;
+            overflow-wrap: break-word;
+        }
+        
+        .product-box {
+            font-size: 14px;
+            line-height: 16px;
+            font-weight: 400;
+            max-width: 100%;
+            word-break: break-word;
+            min-height: 16px;
+        }
+        
+        .price-tag-right {
+            position: absolute;
+            left: 60%; 
+            top: 0px;
+            width: 40%; 
+            height: 80px; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-end;
+            padding: 10px 12px 6px 0px;
+            box-sizing: border-box;
+        }
+
+        .price-main-box {
+            display: inline-flex; 
+            flex-direction: row;
+            justify-content: flex-end;
+            align-items: center; 
+            background: #8EBC77;
+            height: 72px; 
+        }
+
+        .price-dollars-box {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 2px 4px 5px 6px;
+            background: #8EBC77;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 800;
+            font-size: 58px;
+            text-align: right;
+            line-height: 1;
+        }
+
+        .price-cents-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 3px;
+            width: 40px;
+        }
+
+        .price-cents-box {
+            display: flex;
+            align-items: center;
+            padding: 0px 6px 0px 0px;
+            background: #8EBC77;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 900;
+            font-size: 29px;
+            line-height: 26px;
+            text-align: right;
+            width: 40px;
+            height: 26px;
+        }
+
+        .price-sale-box {
+            display: flex;
+            align-items: center;
+            padding: 0px 6px 3px 0px;
+            background: #8EBC77;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 900;
+            font-size: 21px;
+            line-height: 16px;
+            text-align: right;
+            width: 30px;
+            height: 19px;
+        }
+
+        .barcode-clipper {
+            position: absolute;
+            height: 28px;
+            left: 60%; 
+            right: 12px;
+            top: 80px;
+            overflow: hidden;
+        }
+        /* --- END MODIFIED SECTION --- */
+
+        .barcode-text-content {
+            position: relative;
+            top: -40px;
+            font-size: 72px; 
+            line-height: 68px; 
+            text-align: right;
+            color: #000000;
+        }
+
+        /* Make contenteditable placeholders visible */
+        [contenteditable]:empty:before {
+          content: attr(data-placeholder);
+          color: #9ca3af;
+          font-style: italic;
+        }
+        
+        /* --- Preview wrapper styles --- */
+        .preview-letter-wrapper {
+            overflow: auto;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .preview-4x6-wrapper {
+            overflow: auto;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            background-color: #e5e7eb;
+        }
+        .preview-letter, .preview-4x6 {
+            background: white;
+            box-sizing: border-box;
+            transform-origin: top center;
+            margin: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .preview-letter {
+            width: 8.5in;
+            min-height: 11in;
+            padding: 0.25in;
+            display: grid;
+            grid-template-columns: repeat(2, 3in);
+            grid-auto-rows: 1.25in;
+            gap: 0;
+            justify-content: center;
+            transform: scale(0.25);
+        }
+        .preview-4x6 {
+            width: 4in;
+            height: 6in;
+            padding: 0.5in;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 0;
+            transform: scale(0.5);
+        }
+
+        /* --- IMPROVED PRINT CSS FOR iOS COMPATIBILITY --- */
+        @media print {
+            /* Force background colors and images to print */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* Reset everything for print */
+            html, body {
+                width: 100% !important;
+                height: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                color: black !important;
+                font-size: 12pt !important;
+            }
+
+            /* Hide everything except print area */
+            body > :not(.print-area) {
+                display: none !important;
+            }
+
+            /* Show the print area */
+            .print-area {
+                display: block !important;
+                position: relative !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            /* Hide delete buttons during printing */
+            .print-area .delete-btn {
+                display: none !important;
+            }
+            
+            /* FIXED: More precise page layout for Letter size with better iOS margins */
+            .print-letter {
+                width: 8.5in !important;
+                height: 11in !important;
+                margin: 0 !important;
+                padding: 0.5in 0.25in !important; /* Increased top/bottom padding for iOS */
+                display: grid !important;
+                grid-template-columns: repeat(2, 3in) !important;
+                grid-auto-rows: 1.25in !important;
+                gap: 0 !important; /* NO GAP - edges touching for easy cutting */
+                justify-content: center !important;
+                align-content: start !important; /* Align to top */
+                page-break-after: always !important;
+                background: white !important;
+                box-sizing: border-box !important;
+            }
+
+            /* FIXED: Better 4x6 layout */
+            .print-4x6 {
+                width: 4in !important;
+                height: 6in !important;
+                margin: 0 !important;
+                padding: 0.75in 0.5in !important; /* More padding for iOS */
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-start !important;
+                align-items: center !important;
+                gap: 0 !important; /* NO GAP - edges touching for easy cutting */
+                page-break-after: always !important;
+                background: white !important;
+                box-sizing: border-box !important;
+            }
+
+            /* Style for the second page with cut lines */
+            .print-cut-lines, .print-cut-lines-4x6 {
+                page-break-before: always !important;
+                background: white !important;
+            }
+            
+            .cut-line-box {
+                border: 1px dashed #999 !important;
+                box-sizing: border-box !important;
+                background: white !important;
+            }
+            
+            /* FIXED: Ensure individual tags maintain their size and don't get crushed */
+            .price-tag-container {
+                width: 3in !important;
+                height: 1.25in !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                break-inside: avoid !important;
+                background: white !important;
+                box-sizing: border-box !important;
+                flex-shrink: 0 !important;
+                position: relative !important;
+                overflow: hidden !important;
+            }
+
+            /* Ensure backgrounds print */
+            .price-tag-left, .price-tag-right, .barcode-clipper, .product-box {
+                background: white !important;
+            }
+
+            .brand-box {
+                border: 1px solid #000000 !important;
+                background: white !important;
+                width: auto !important;
+                min-width: 20px !important;
+                max-width: 100% !important;
+                white-space: pre-line !important; /* Better for contenteditable in print */
+                overflow-wrap: break-word !important;
+            }
+
+            .price-main-box, .price-dollars-box, .price-cents-box, .price-sale-box {
+                background: #8EBC77 !important;
+            }
+
+            /* ADDED: Force font sizes to be consistent in print */
+            .price-dollars-box {
+                font-size: 58px !important;
+            }
+            .price-cents-box {
+                font-size: 29px !important;
+            }
+            .price-sale-box {
+                font-size: 21px !important;
+            }
+            .barcode-text-content {
+                font-size: 72px !important;
+            }
+        }
+        
+        .loader {
+            border: 5px solid #f3f3f3; border-radius: 50%;
+            border-top: 5px solid #3498db; width: 50px; height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+        <div class="flex flex-col items-center">
+            <div class="loader"></div>
+            <p class="text-white mt-4">Generating, please wait...</p>
+        </div>
+    </div>
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">Price Tag Generator</h1>
+            <p class="text-lg text-gray-600 mt-2">Edit your price tags directly and print with perfect positioning</p>
+        </header>
+
+        <div id="live-preview-container" class="bg-white p-6 rounded-lg shadow-lg mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4 flex-wrap">
+                <h2 class="text-2xl font-semibold">Edit & Preview</h2>
+                <div class="flex items-center gap-2 flex-wrap justify-center">
+                    <button id="addRowBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md transition-colors">Add Product</button>
+                    <button id="print-letter" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition-colors">Print Letter</button>
+                    <button id="print-4x6" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-md transition-colors">Print 4x6</button>
+                    <div id="preview-toggle" class="flex items-center border border-gray-300 rounded-md">
+                        <button id="preview-tags-btn" class="px-3 py-1 transition-colors">Tags</button>
+                        <button id="preview-letter-btn" class="px-3 py-1 transition-colors">Letter</button>
+                        <button id="preview-4x6-btn" class="px-3 py-1 transition-colors">4x6</button>
+                    </div>
+                </div>
+            </div>
+            <div id="live-preview-area" class="flex flex-wrap justify-center gap-4 p-4 bg-gray-50 rounded-md min-h-[420px] items-start">
+                </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-4 text-blue-600">🔧 Alternative: dom-to-image PDF</h3>
+                <p class="text-gray-600 mb-4">If direct print doesn't work well, try this PDF generation method.</p>
+                <div class="space-y-2 mb-4">
+                    <button id="domimg-letter" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Export Letter PDF</button>
+                    <button id="domimg-4x6" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Export 4x6 PDF</button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-4 text-purple-600">🎯 Alternative: Direct PDF</h3>
+                <p class="text-gray-600 mb-4">Creates a PDF directly for guaranteed positioning.</p>
+                <div class="space-y-2 mb-4">
+                    <button id="direct-letter" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Direct Letter PDF</button>
+                    <button id="direct-4x6" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Direct 4x6 PDF</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-semibold mb-2 text-yellow-800">📋 Instructions for iOS Printing:</h3>
+            <ul class="text-yellow-700 list-disc list-inside space-y-2">
+                <li>Click <strong>"Print Letter"</strong> or <strong>"Print 4x6"</strong>.</li>
+                <li>In the iOS print preview, tap "Options" at the bottom.</li>
+                <li>Make sure <strong>"Print Backgrounds"</strong> is turned ON ✅ (This is crucial for the green price boxes!).</li>
+                <li>Choose the correct paper size (Letter or 4x6).</li>
+                <li><strong>Easy cutting:</strong> Tags are now perfectly aligned with touching edges - cut straight lines to separate!</li>
+                <li>You'll get 2 pages: Page 1 has the price tags, and Page 2 has dashed cut lines.</li>
+            </ul>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h3 class="text-lg font-semibold mb-2 text-blue-800">🔧 What Was Fixed for iOS:</h3>
+            <ul class="text-blue-700 list-disc list-inside space-y-2">
+                <li><strong>Better margins:</strong> Added more padding to account for iOS printer margins</li>
+                <li><strong>Perfect alignment:</strong> Removed gaps - tags now have touching edges for easy cutting</li>
+                <li><strong>Font size enforcement:</strong> Forced font sizes to remain consistent in print</li>
+                <li><strong>Position fixes:</strong> Used more reliable positioning for print layouts</li>
+                <li><strong>iOS-specific print styles:</strong> Enhanced CSS for better iOS Safari compatibility</li>
+                <li><strong>Cutting optimization:</strong> One straight cut can now separate two adjacent tags!</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="print-letter-area" class="print-area hidden"></div>
+    <div id="print-4x6-area" class="print-area hidden"></div>
+
+    <script>
+        // --- STATE MANAGEMENT ---
+        let tagsData = [
+            { id: Date.now(), brand: 'ACME Foods', product: 'Organic Apples', dollars: '3', cents: '99', sale: '/LB', barcode: '1234567890128' },
+            { id: Date.now() + 1, brand: 'Store Brand', product: 'Milk 2%', dollars: '4', cents: '29', sale: 'EA', barcode: '9876543210987' },
+            { id: Date.now() + 2, brand: 'Fresh Co', product: 'Bananas', dollars: '2', cents: '49', sale: '/LB', barcode: '4567891234560' },
+        ];
+
+        let previewMode = 'tags'; // 'tags', 'letter', or '4x6'
+
+        // --- DOM ELEMENTS ---
+        const livePreviewArea = document.getElementById('live-preview-area');
+        const addRowBtn = document.getElementById('addRowBtn');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const previewToggle = document.getElementById('preview-toggle');
+        const previewTagsBtn = document.getElementById('preview-tags-btn');
+        const previewLetterBtn = document.getElementById('preview-letter-btn');
+        const preview4x6Btn = document.getElementById('preview-4x6-btn');
+
+        // --- RENDERING FUNCTIONS ---
+        function renderPreview() {
+            livePreviewArea.innerHTML = '';
+
+            // Update toggle button styles
+            previewTagsBtn.className = 'px-3 py-1 rounded-l-md transition-colors ' + (previewMode === 'tags' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700');
+            previewLetterBtn.className = 'px-3 py-1 transition-colors ' + (previewMode === 'letter' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700');
+            preview4x6Btn.className = 'px-3 py-1 rounded-r-md transition-colors ' + (previewMode === '4x6' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700');
+
+            if (previewMode === 'tags') {
+                if (tagsData.length === 0) {
+                    livePreviewArea.innerHTML = `<p class="text-gray-500">Add a product to see a preview.</p>`;
+                } else {
+                    tagsData.forEach(tag => {
+                        const tagEl = createPriceTagElement(tag);
+                        livePreviewArea.appendChild(tagEl);
+                    });
+                }
+            } else if (previewMode === 'letter') {
+                const pageWrapper = document.createElement('div');
+                pageWrapper.className = 'preview-letter-wrapper';
+                const letterPage = document.createElement('div');
+                letterPage.className = 'preview-letter';
+                
+                tagsData.slice(0, 16).forEach(tag => {
+                    letterPage.appendChild(createPriceTagElement(tag));
+                });
+                pageWrapper.appendChild(letterPage);
+                livePreviewArea.appendChild(pageWrapper);
+
+            } else if (previewMode === '4x6') {
+                const pageWrapper = document.createElement('div');
+                pageWrapper.className = 'preview-4x6-wrapper';
+                const fourBySixPage = document.createElement('div');
+                fourBySixPage.className = 'preview-4x6';
+
+                tagsData.slice(0, 4).forEach(tag => {
+                    fourBySixPage.appendChild(createPriceTagElement(tag));
+                });
+                pageWrapper.appendChild(fourBySixPage);
+                livePreviewArea.appendChild(pageWrapper);
+            }
+        }
+
+        function createPriceTagElement(tag) {
+            const tagEl = document.createElement('div');
+            tagEl.className = 'price-tag-container';
+            tagEl.dataset.id = tag.id;
+
+            // Note: contenteditable fields have a data-field attribute to link them to the state object.
+            tagEl.innerHTML = `
+                <div class="price-tag-left">
+                    <div class="brand-box" contenteditable="true" data-field="brand" data-placeholder="Brand">${tag.brand || ''}</div>
+                    <div class="product-box" contenteditable="true" data-field="product" data-placeholder="Product Name">${tag.product || ''}</div>
+                </div>
+                <div class="price-tag-right">
+                    <div class="price-main-box">
+                        <div class="price-dollars-box">
+                            <span contenteditable="true" data-field="dollars" data-placeholder="$$">${tag.dollars || ''}</span>
+                        </div>
+                        <div class="price-cents-section">
+                            <div class="price-cents-box">
+                                <span contenteditable="true" data-field="cents" data-placeholder="¢¢">${tag.cents || ''}</span>
+                            </div>
+                            <div class="price-sale-box">
+                                <span contenteditable="true" data-field="sale" data-placeholder="/EA">${tag.sale || ''}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="barcode-clipper">
+                    <div class="barcode-text-content barcode-font" contenteditable="true" data-field="barcode" data-placeholder="Barcode (13 digits)">${(tag.barcode || '').slice(0, 13)}</div>
+                </div>
+                <button class="delete-btn absolute top-0 right-0 p-1 leading-none text-xl text-red-400 hover:text-red-700 hover:bg-red-100 rounded-bl-lg z-10 transition-colors" title="Delete Tag">&times;</button>
+            `;
+            return tagEl;
+        }
+
+        // --- EVENT HANDLERS ---
+        addRowBtn.addEventListener('click', () => {
+            tagsData.push({ id: Date.now(), brand: '', product: '', dollars: '', cents: '', sale: '', barcode: '' });
+            // If not in 'tags' view, switch to it to show the new tag
+            if (previewMode !== 'tags') {
+                previewMode = 'tags';
+            }
+            renderPreview();
+        });
+
+        livePreviewArea.addEventListener('input', (e) => {
+            const target = e.target;
+            // Check if the event is from an editable element
+            if (target.hasAttribute('contenteditable')) {
+                const tagEl = target.closest('.price-tag-container');
+                if (tagEl) {
+                    const id = Number(tagEl.dataset.id);
+                    const field = target.dataset.field;
+                    let value = target.innerText;
+
+                    const tagData = tagsData.find(t => t.id === id);
+                    if (tagData) {
+                        // Sanitize and update data
+                        if (field === 'barcode') {
+                            value = value.replace(/\D/g, '').slice(0, 13); // Only digits, max 13
+                        }
+                        
+                        // Special handling for brand field to preserve line breaks
+                        if (field === 'brand') {
+                           value = target.innerText; // Keep original formatting
+                        } else {
+                            // Prevent newlines in other fields
+                           value = value.replace(/[\r\n]/g, ' '); 
+                        }
+                        
+                        tagData[field] = value;
+                    }
+                }
+            }
+        });
+        
+        // Handle barcode field separately on blur to reformat it if needed
+        livePreviewArea.addEventListener('blur', (e) => {
+            const target = e.target;
+            if (target.dataset.field === 'barcode') {
+                 const tagEl = target.closest('.price-tag-container');
+                 if (tagEl) {
+                    const id = Number(tagEl.dataset.id);
+                    const tagData = tagsData.find(t => t.id === id);
+                    if (tagData && target.innerText !== tagData.barcode) {
+                        target.innerText = tagData.barcode;
+                    }
+                 }
+            }
+        }, true); // Use capture phase to catch blur before other events
+
+        livePreviewArea.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const tagEl = e.target.closest('.price-tag-container');
+                if (tagEl) {
+                    const id = Number(tagEl.dataset.id);
+                    const index = tagsData.findIndex(t => t.id === id);
+                    if (index > -1) {
+                        tagsData.splice(index, 1);
+                        renderPreview(); // Re-render to remove the element from view
+                    }
+                }
+            }
+        });
+
+        previewToggle.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON') return;
+            if (e.target.id === 'preview-tags-btn') previewMode = 'tags';
+            else if (e.target.id === 'preview-letter-btn') previewMode = 'letter';
+            else if (e.target.id === 'preview-4x6-btn') previewMode = '4x6';
+            renderPreview();
+        });
+
+        // --- IMPROVED PRINT & PDF FUNCTIONS ---
+        function setupAndPrint(format) {
+            const isLetter = format === 'letter';
+            const printArea = document.getElementById(isLetter ? 'print-letter-area' : 'print-4x6-area');
+            printArea.innerHTML = ''; // Clear previous content
+
+            // Create page for tags
+            const tagsPage = document.createElement('div');
+            tagsPage.className = isLetter ? 'print-letter' : 'print-4x6';
+            const tagsToPrint = isLetter ? tagsData.slice(0, 16) : tagsData.slice(0, 4);
+            tagsToPrint.forEach(tag => tagsPage.appendChild(createPriceTagElement(tag)));
+            
+            // Create page for cut lines
+            const cutLinesPage = document.createElement('div');
+            cutLinesPage.className = isLetter ? 'print-letter print-cut-lines' : 'print-4x6 print-cut-lines-4x6';
+            const numCutLines = isLetter ? 16 : 4;
+            for (let i = 0; i < numCutLines; i++) {
+                const cutBox = document.createElement('div');
+                cutBox.className = 'cut-line-box';
+                cutBox.style.width = '3in';
+                cutBox.style.height = '1.25in';
+                cutLinesPage.appendChild(cutBox);
+            }
+
+            printArea.appendChild(tagsPage);
+            printArea.appendChild(cutLinesPage);
+            
+            printArea.classList.remove('hidden');
+            setTimeout(() => {
+                window.print();
+                printArea.classList.add('hidden');
+            }, 100);
+        }
+
+        document.getElementById('print-letter').addEventListener('click', () => setupAndPrint('letter'));
+        document.getElementById('print-4x6').addEventListener('click', () => setupAndPrint('4x6'));
+
+        async function generatePdfWithDomToImage(format) {
+            loadingOverlay.style.display = 'flex';
+            
+            const { jsPDF } = window.jspdf;
+            const isLetter = format === 'letter';
+            
+            const tempContainer = document.createElement('div');
+            tempContainer.style.position = 'fixed';
+            tempContainer.style.top = '-9999px'; // Move off-screen
+            tempContainer.style.left = '-9999px';
+            tempContainer.style.background = 'white';
+            
+            Object.assign(tempContainer.style, {
+                width: isLetter ? '8.5in' : '4in',
+                height: isLetter ? '11in' : '6in',
+                padding: isLetter ? '0.25in' : '0.5in',
+                background: 'white',
+                boxSizing: 'border-box',
+            });
+
+            if (isLetter) {
+                Object.assign(tempContainer.style, {
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 3in)',
+                    gridAutoRows: '1.25in',
+                    gap: '0',
+                    justifyContent: 'center',
+                });
+                tagsData.slice(0, 16).forEach(tag => tempContainer.appendChild(createPriceTagElement(tag)));
+            } else {
+                 Object.assign(tempContainer.style, {
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-start',
+                    alignItems: 'center',
+                    gap: '0',
+                });
+                tagsData.slice(0, 4).forEach(tag => tempContainer.appendChild(createPriceTagElement(tag)));
+            }
+            
+            document.body.appendChild(tempContainer);
+            
+            try {
+                await new Promise(resolve => setTimeout(resolve, 500)); // Wait for render
+                
+                const dataUrl = await domtoimage.toPng(tempContainer, {
+                    width: tempContainer.offsetWidth,
+                    height: tempContainer.offsetHeight,
+                    quality: 1.0,
+                    style: {
+                        transform: 'scale(1)',
+                        margin: 0
+                    }
+                });
+                
+                const pdf = new jsPDF(isLetter ? 'p' : 'p', 'in', isLetter ? 'letter' : [4, 6]);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                
+                pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`price-tags-domtoimage-${format}.pdf`);
+                
+            } catch (error) {
+                console.error('dom-to-image error:', error);
+                alert('PDF generation failed. Please try the direct print option.');
+            } finally {
+                document.body.removeChild(tempContainer);
+                loadingOverlay.style.display = 'none';
+            }
+        }
+
+        document.getElementById('domimg-letter').addEventListener('click', () => generatePdfWithDomToImage('letter'));
+        document.getElementById('domimg-4x6').addEventListener('click', () => generatePdfWithDomToImage('4x6'));
+
+        function generateDirectPdf(format) {
+            loadingOverlay.style.display = 'flex';
+            
+            const { jsPDF } = window.jspdf;
+            const isLetter = format === 'letter';
+            const pdf = new jsPDF(isLetter ? 'p' : 'p', 'pt', isLetter ? 'letter' : [288, 432]); 
+            
+            const tagWidth = 216; // 3in
+            const tagHeight = 90;  // 1.25in
+            
+            const tags = isLetter ? tagsData.slice(0, 16) : tagsData.slice(0, 4);
+            
+            tags.forEach((tag, index) => {
+                let x, y;
+                
+                if (isLetter) {
+                    const col = index % 2;
+                    const row = Math.floor(index / 2);
+                    x = 18 + (col * (tagWidth + 24)); // 0.25in margin + column gap
+                    y = 18 + (row * tagHeight);
+                } else {
+                    x = (288 - tagWidth) / 2; // Centered
+                    y = 36 + (index * (tagHeight + 10)); // 0.5in margin + gap
+                }
+                
+                // Draw tag content... (This is a simplified version)
+                pdf.setDrawColor(238, 238, 238);
+                pdf.rect(x, y, tagWidth, tagHeight);
+                pdf.setDrawColor(0, 0, 0);
+                pdf.rect(x + 7, y + 7, 80, 18);
+                pdf.setFontSize(10).setFont("helvetica", "normal").text(tag.brand || '', x + 9, y + 18);
+                pdf.text(tag.product || '', x + 7, y + 35);
+                pdf.setFillColor(142, 188, 119).rect(x + 108, y + 5, 100, 52, 'F');
+                pdf.setFontSize(42).setFont("helvetica", "bold").setTextColor(0,0,0).text(tag.dollars || '', x + 180, y + 45, { align: 'right' });
+                pdf.setFontSize(20).text(tag.cents || '', x + 200, y + 30, { align: 'right' });
+                pdf.setFontSize(15).text(tag.sale || '', x + 200, y + 50, { align: 'right' });
+                pdf.setFontSize(8).text(tag.barcode || '', x + 200, y + 75, { align: 'right' });
+            });
+            
+            pdf.save(`price-tags-direct-${format}.pdf`);
+            loadingOverlay.style.display = 'none';
+        }
+
+        document.getElementById('direct-letter').addEventListener('click', () => generateDirectPdf('letter'));
+        document.getElementById('direct-4x6').addEventListener('click', () => generateDirectPdf('4x6'));
+
+        // --- INITIALIZE ---
+        renderPreview(); // Load initial data and preview
+
+    </script>
+</body>
+</html>
